@@ -167,7 +167,7 @@ def check_csp(value: Optional[str]) -> HeaderCheck:
         return HeaderCheck(
             present=False,
             verdict="missing",
-            recommendation="Add a Content-Security-Policy. Start with \"default-src 'self'\"; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+            recommendation='Add a Content-Security-Policy. Start with "default-src \'self\'"; object-src \'none\'; base-uri \'self\'; frame-ancestors \'none\'',
         )
     v = value.lower()
     issues: List[str] = []
@@ -177,9 +177,9 @@ def check_csp(value: Optional[str]) -> HeaderCheck:
         issues.append("Avoid 'unsafe-eval'")
     if "object-src 'none'" not in v:
         issues.append("Set 'object-src 'none''")
-    if "base-uri" not in v:
+    if "base-uri 'self'" not in v:
         issues.append("Set 'base-uri 'self''")
-    if "frame-ancestors" not in v:
+    if "frame-ancestors 'none'" not in v:
         issues.append("Set 'frame-ancestors' (or use X-Frame-Options)")
     verdict = "good" if not issues else "present-with-issues"
     rec = "; ".join(issues) if issues else None
@@ -275,16 +275,14 @@ async def check(url: str = Query(..., description="Target URL (http/https). E.g.
 
             # Try HEAD (polite, fast), fall back to GET if HEAD is not useful
             try:
-                head = await client.head(target, max_redirects=5)
+                head = await client.head(target)
                 if head.status_code >= 400 or not head.headers:
                     raise httpx.HTTPStatusError("HEAD not useful", request=head.request, response=head)
                 resp = head
             except Exception as e_head:
                 logger.info(f"HEAD failed for {target}: {e_head}; falling back to GET")
                 try:
-                    resp = await client.get(target, max_redirects=5)
-                except httpx.TooManyRedirects:
-                    raise HTTPException(status_code=400, detail="Too many redirects")
+                    resp = await client.get(target)
                 except httpx.HTTPError as e:
                     # network errors, DNS, TLS, timeouts → 502
                     raise HTTPException(status_code=502, detail=f"Upstream HTTP error: {str(e)}")
@@ -348,7 +346,7 @@ async def check(url: str = Query(..., description="Target URL (http/https). E.g.
             score_out_of_100=score_val,
         )
         # Pretty JSON for browsers
-        return JSONResponse(content=result.model_dump(), status_code=200, media_type="application/json", indent=2)
+        return JSONResponse(content=result.model_dump(), status_code=200, media_type="application/json")
 
     except HTTPException as hx:
         logger.warning(f"HTTPException: {hx.detail}")
