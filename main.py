@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import Dict, List
 import httpx
 from urllib.parse import urlparse
 import socket
@@ -66,7 +66,13 @@ def is_ip_disallowed(ip_str: str) -> bool:
         ip_obj = ipaddress.ip_address(ip_str)
     except ValueError:
         return True
-    if ip_obj.is_unspecified or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_reserved or ip_obj.is_multicast:
+    if (
+        ip_obj.is_unspecified
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_reserved
+        or ip_obj.is_multicast
+    ):
         return True
     for net in PRIVATE_NETS:
         if ip_obj in net:
@@ -129,7 +135,7 @@ def check_csp(value: str | None) -> HeaderCheck:
             present=False,
             value=None,
             verdict="missing",
-            recommendation="Add a Content-Security-Policy. Start with 'default-src 'self''; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+            recommendation="Add a Content-Security-Policy. Start with \"default-src 'self'\"; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         )
     v = value.lower()
     issues = []
@@ -195,6 +201,15 @@ def score(headers: Dict[str, HeaderCheck], https_enforced: bool) -> int:
     return int((total / parts) * 100) if parts else 0
 
 # ---------- Routes ----------
+@app.get("/")
+def root():
+    return {
+        "message": "Security Headers Checker API",
+        "usage": "/check?url=https://example.com",
+        "docs": "/docs",
+        "health": "/healthz"
+    }
+
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
@@ -275,4 +290,3 @@ async def check(url: str = Query(..., description="Target URL (http/https). E.g.
         issues=issues,
         score_out_of_100=score_val
     )
-``
